@@ -27,6 +27,14 @@ The program is written for python 3.
 
 To recompile the C libraries, run ./recompile.sh
 
+Installation:
+
+With this new fork, you can install the package via pip:
+::
+	
+	pip install -e .
+
+
 --------------------------
 
 To get help: 

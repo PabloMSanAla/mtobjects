@@ -30,6 +30,9 @@ setup(
         "numpy",
         "astropy",
         "Pillow",
+        "scikit-image",
+        "astropy",
+        "matplotlib",
     ],
     python_requires=">=3.8",
     classifiers=[
