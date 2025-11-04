@@ -1,6 +1,7 @@
 """Input/output functions."""
 
 from astropy.io import fits
+import astropy
 import sys
 import numpy as np
 import argparse
@@ -84,13 +85,18 @@ def write_fits_file(data, header=None, filename='out.fits'):
 
     image_hdus = [fits.ImageHDU(d) for d in data[1:]]
 
-    # Ignore clobber warning
-    warnings.filterwarnings('ignore', category=AstropyDeprecationWarning, append=True)
+
+    hdulist = fits.HDUList([primary_hdu, *image_hdus])
 
     # Write to file
-    hdulist = fits.HDUList([primary_hdu, *image_hdus])
-    hdulist.writeto(filename, clobber=True)  # Clobber deprecated for astropy 1.3
-    hdulist.close()
+    if astropy.__version__ <= '1.3':
+        # Ignore clobber warning
+        warnings.filterwarnings('ignore', category=AstropyDeprecationWarning, append=True)
+        hdulist.writeto(filename, clobber=True)  # Clobber deprecated for astropy 1.3
+        hdulist.close()
+    else:
+        hdulist.writeto(filename, overwrite=True)  # Clobber deprecated for astropy 1.3
+        hdulist.close()
 
 
 def generate_image(img, object_ids, p,

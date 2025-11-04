@@ -109,6 +109,10 @@ def check_tile_is_flat(tile, rejection_rate):
     if np.count_nonzero(~np.isnan(tile)) == 0:
         return _REJECT_TILE
 
+    # Discard tiles which are 80% NaNs and bigger than 8 so test_normality doesn't break
+    if (np.sum(np.isfinite(tile)) < 0.2*tile.size) or (np.sum(np.isfinite(tile)) < 8): 
+        return _REJECT_TILE
+    
     # If tile fails to be normal, reject it
     if test_normality(tile, rejection_rate_1) is False:
         return _REJECT_TILE

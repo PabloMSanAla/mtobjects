@@ -2,6 +2,7 @@
 
 import ctypes as ct
 import numpy as np
+import os 
 
 import mtolib.significance_tests as mt_sig
 from mtolib import _ctype_classes as mt_class
@@ -9,7 +10,7 @@ from mtolib.utils import time_function
 
 # Get access to the compiled C maxtree library
 # Defaults to float version
-mto_lib = ct.CDLL('mtolib/lib/mt_objects.so')
+mto_lib = ct.CDLL(os.path.join(os.path.dirname(__file__),'lib','mt_objects.so'))
 
 
 def init_double_filtering(params):
@@ -18,7 +19,7 @@ def init_double_filtering(params):
 
     # If the image is 64 bit, use the double version of the library
     if params.d_type == ct.c_double:
-        mto_lib = ct.CDLL('mtolib/lib/mt_objects_double.so')
+        mto_lib = ct.CDLL(os.path.join(os.path.dirname(__file__),'lib','mt_objects_double.so'))
 
 
 def up_tree():

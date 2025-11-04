@@ -81,7 +81,7 @@ def get_image_parameters(img, object_ids, sig_ancs, params,):
 
     parameters = []
     headings = ['ID', 'X', 'Y', 'A', 'B', 'theta',  # 'kurtosis',
-                           'total_flux', 'mu_max', 'mu_median', 'mu_mean', 'R_fwhm', 'R_e', 'R10', 'R90']
+                    'total_flux', 'mu_max', 'mu_median', 'mu_mean', 'R_fwhm', 'R_e', 'R10', 'R90', 'area']
 
     parameters.append(headings)
 
@@ -140,6 +140,8 @@ def get_object_parameters(img, node_id, pixel_indices):
     radii, half_max = get_light_distribution(pixel_values, flux_sum)
     p.append(half_max)
     p.extend(radii)
+    
+    p.append(np.size(pixel_values))
 
     return p
 
