@@ -1,14 +1,48 @@
 #!/usr/bin/env python
-from pathlib import Path
+import os
+import subprocess
 from setuptools import setup, find_packages
+from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
 
-here = Path(__file__).parent
+
+class CustomBuildExt(build_ext):
+    """Custom build_ext command to compile C extensions using recompile.sh"""
+    
+    def run(self):
+        # Run the recompile.sh script
+        script_path = os.path.join(os.path.dirname(__file__), "recompile.sh")
+        if os.path.exists(script_path):
+            try:
+                subprocess.check_call(["bash", str(script_path)])
+                print("Successfully compiled C extensions using recompile.sh")
+            except subprocess.CalledProcessError as e:
+                print(f"Error running recompile.sh: {e}")
+                raise
+        else:
+            print("Warning: recompile.sh not found, skipping C extension compilation")
+        
+        # Call parent implementation
+        super().run()
+
+
+class CustomInstall(install):
+    """Custom install command to ensure C extensions are built"""
+    
+    def run(self):
+        # Run build_ext before install
+        self.run_command('build_ext')
+        super().run()
+
+
+here = os.path.dirname(__file__)
 
 # Read the long description from README.rst
 long_description = ""
-readme = here / "README.rst"
-if readme.exists():
-    long_description = readme.read_text(encoding="utf-8")
+readme = os.path.join(here, "README.rst")
+if os.path.exists(readme):
+    with open(readme, encoding="utf-8") as f:
+        long_description = f.read()
 
 setup(
     name="mtobjects",
@@ -23,8 +57,8 @@ setup(
     py_modules=["mto"],
     include_package_data=True,
     package_data={
-        # Ensure prebuilt shared objects are included in the package
-        "mtolib": ["lib/*.so"],
+        # Include compiled shared objects and source files
+        "mtolib": ["lib/*.so", "src/*.c", "src/*.h"],
     },
     install_requires=[
         "numpy",
@@ -40,5 +74,9 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    cmdclass={
+        'build_ext': CustomBuildExt,
+        'install': CustomInstall,
+    },
     zip_safe=False,
 )
