@@ -2,7 +2,7 @@
 import os
 import subprocess
 from pathlib import Path
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
@@ -58,48 +58,10 @@ class CustomInstall(install):
         super().run()
 
 
-here = os.path.dirname(__file__)
-
-# Read the long description from README.rst
-long_description = ""
-readme = os.path.join(here, "README.rst")
-if os.path.exists(readme):
-    with open(readme, encoding="utf-8") as f:
-        long_description = f.read()
-
+# Simple setup call - configuration is in pyproject.toml
 setup(
-    name="mtobjects",
-    version="0.1.0",
-    description="Max-tree based object detection and parameter extraction",
-    long_description=long_description,
-    long_description_content_type="text/x-rst",
-    url="https://github.com/CarolineHaigh/mtobjects",
-    author="",
-    license="MIT",
-    packages=find_packages(exclude=("tests",)),
-    py_modules=["mto"],
-    include_package_data=True,
-    package_data={
-        # Include compiled shared objects and source files
-        "mtolib": ["lib/*.so", "src/*.c", "src/*.h"],
-    },
-    install_requires=[
-        "numpy",
-        "astropy",
-        "Pillow",
-        "scikit-image",
-        "astropy",
-        "matplotlib",
-    ],
-    python_requires=">=3.8",
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
     cmdclass={
         'build_ext': CustomBuildExt,
         'install': CustomInstall,
     },
-    zip_safe=False,
 )

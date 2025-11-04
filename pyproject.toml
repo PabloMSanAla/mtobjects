@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mtobjects"
+version = "0.1.0"
+description = "Max-tree based object detection and parameter extraction"
+readme = "README.rst"
+license = {text = "MIT"}
+authors = [{name = "Caroline Haigh"}]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "astropy",
+    "Pillow",
+    "scikit-image",
+    "matplotlib",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://github.com/PabloMSanAla/mtobjects"
+
+[tool.setuptools]
+py-modules = ["mto"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+mtolib = ["lib/*.so", "src/*.c", "src/*.h"]
