@@ -114,7 +114,7 @@ class CustomBuild(build):
     def run(self):
         # Run build_ext before other build steps
         compile_c_extensions()
-        super().run()
+        build().run()
 
 
 class CustomDevelop(develop):
