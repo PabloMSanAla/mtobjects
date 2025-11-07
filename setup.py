@@ -2,6 +2,9 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import shutil
 import os
+import importlib.machinery
+
+importlib.machinery.EXTENSION_SUFFIXES = [".so"]
 
 # Define the C source directory
 src_dir = 'mtolib/src'
