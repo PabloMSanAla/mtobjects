@@ -2,12 +2,16 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.build-meta]
+# Ensure build_ext is run during the build process
+build-dir = "build"
+
 [project]
 name = "mtobjects"
 version = "0.1.0"
 description = "Max-tree based object detection and parameter extraction"
 authors = [{name = "Caroline Haigh", email = "caroline@example.com"}]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.rst"
 requires-python = ">=3.8"
 dependencies = [
@@ -19,7 +23,6 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
@@ -28,8 +31,14 @@ Homepage = "https://github.com/PabloMSanAla/mtobjects"
 Repository = "https://github.com/PabloMSanAla/mtobjects"
 
 [tool.setuptools.packages.find]
-include = ["mtolib*", "mto*"]
+include = ["mtolib*"]
+
+[tool.setuptools.py-modules]
+mto = "mto"
 
 [tool.setuptools.package-data]
 mtolib = ["lib/*.so", "src/*.c", "src/*.h"]
-"*" = ["Makefile"]
+
+[tool.setuptools.ext-modules]
+# This section ensures C extensions are built
+# The actual extension definitions are in setup.py

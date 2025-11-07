@@ -1,91 +1,117 @@
-from setuptools import setup, find_packages
-from setuptools.command.build_py import build_py
-from setuptools.command.install import install
-import subprocess
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
+import shutil
 import os
-import sys
+
+# Define the C source directory
+src_dir = 'mtolib/src'
 
 
-class BuildCLibraries(build_py):
-    """Custom build command to compile C libraries using gcc."""
-    
+class CustomBuildExt(build_ext):
     def run(self):
-        # Run the parent build_py first
+        # Run the normal build_ext
         super().run()
         
-        # Change to the project directory
-        original_dir = os.getcwd()
-        project_dir = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(project_dir)
+        # Copy the files to the expected names
+        lib_dir = 'mtolib/lib'
+        os.makedirs(lib_dir, exist_ok=True)
         
-        try:
-            # Create lib directory if it doesn't exist
-            lib_dir = 'mtolib/lib'
-            os.makedirs(lib_dir, exist_ok=True)
-            
-            # Define the compilation commands (equivalent to the Makefile)
-            commands = [
-                # mt_objects.so
-                'gcc -shared -fPIC -include mtolib/src/main.h -o mtolib/lib/mt_objects.so mtolib/src/mt_objects.c mtolib/src/mt_heap.c mtolib/src/mt_node_test_4.c',
-                # maxtree.so  
-                'gcc -shared -fPIC -include mtolib/src/main.h -o mtolib/lib/maxtree.so mtolib/src/maxtree.c mtolib/src/mt_stack.c mtolib/src/mt_heap.c',
-                # mt_objects_double.so
-                'gcc -shared -fPIC -include mtolib/src/main_double.h -o mtolib/lib/mt_objects_double.so mtolib/src/mt_objects.c mtolib/src/mt_heap.c mtolib/src/mt_node_test_4.c',
-                # maxtree_double.so
-                'gcc -shared -fPIC -include mtolib/src/main_double.h -o mtolib/lib/maxtree_double.so mtolib/src/maxtree.c mtolib/src/mt_stack.c mtolib/src/mt_heap.c'
-            ]
-            
-            # Execute each compilation command
-            for cmd in commands:
-                print(f"Running: {cmd}")
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                if result.returncode != 0:
-                    print(f"Error compiling: {cmd}")
-                    print(f"stdout: {result.stdout}")
-                    print(f"stderr: {result.stderr}")
-                    sys.exit(1)
-                else:
-                    print(f"Successfully compiled: {cmd.split()[-1]}")
-                    
-        finally:
-            os.chdir(original_dir)
+        # Mapping of extension names to expected file names
+        extension_mapping = {
+            'mtolib.lib.mt_objects': 'mt_objects.so',
+            'mtolib.lib.maxtree': 'maxtree.so',
+            'mtolib.lib.mt_objects_double': 'mt_objects_double.so',
+            'mtolib.lib.maxtree_double': 'maxtree_double.so'
+        }
+        
+        for ext in self.extensions:
+            # Get the full path to the compiled extension
+            src_path = self.get_ext_fullpath(ext.name)
+            if os.path.exists(src_path):
+                # Get the expected target name
+                target_name = extension_mapping.get(ext.name)
+                if target_name:
+                    dst_path = os.path.join(lib_dir, target_name)
+                    shutil.copy2(src_path, dst_path)
+                    print(f"Copied {src_path} to {dst_path}")
 
 
-class InstallWithCLibraries(install):
-    """Custom install command that ensures C libraries are built."""
+# === Define your four C extensions ===
+# This replaces your four 'gcc' commands.
+
+# 1. Replaces: gcc ... -o ../lib/mt_objects.so ...
+mt_objects_ext = Extension(
+    # This is the Python path where the .so file will live
+    # e.g., 'from mtolib.lib import mt_objects'
+    name='mtolib.lib.mt_objects',
     
-    def run(self):
-        # Run the build command first
-        self.run_command('build_py')
-        # Then run the normal install
-        super().run()
+    # List of C files to compile
+    sources=[
+        f'{src_dir}/mt_objects.c',
+        f'{src_dir}/mt_heap.c',
+        f'{src_dir}/mt_node_test_4.c'
+    ],
+    # Directory to find .h files
+    include_dirs=[src_dir],
+    # Your extra gcc flags
+    extra_compile_args=['-fPIC', '-include', 'main.h']
+)
+
+# 2. Replaces: gcc ... -o ../lib/maxtree.so ...
+maxtree_ext = Extension(
+    name='mtolib.lib.maxtree',
+    sources=[
+        f'{src_dir}/maxtree.c',
+        f'{src_dir}/mt_stack.c',
+        f'{src_dir}/mt_heap.c'
+    ],
+    include_dirs=[src_dir],
+    extra_compile_args=['-fPIC', '-include', 'main.h']
+)
+
+# 3. Replaces: gcc ... -o ../lib/mt_objects_double.so ...
+mt_objects_double_ext = Extension(
+    name='mtolib.lib.mt_objects_double',
+    sources=[ # Same sources as the first one
+        f'{src_dir}/mt_objects.c',
+        f'{src_dir}/mt_heap.c',
+        f'{src_dir}/mt_node_test_4.c'
+    ],
+    include_dirs=[src_dir],
+    # Note the different .h file
+    extra_compile_args=['-fPIC', '-include', 'main_double.h']
+)
+
+# 4. Replaces: gcc ... -o ../lib/maxtree_double.so ...
+maxtree_double_ext = Extension(
+    name='mtolib.lib.maxtree_double',
+    sources=[ # Same sources as the second one
+        f'{src_dir}/maxtree.c',
+        f'{src_dir}/mt_stack.c',
+        f'{src_dir}/mt_heap.c'
+    ],
+    include_dirs=[src_dir],
+    extra_compile_args=['-fPIC', '-include', 'main_double.h']
+)
 
 
+# === The main setup() call ===
 setup(
+    # This tells setuptools to build these C extensions
+    ext_modules=[
+        mt_objects_ext,
+        maxtree_ext,
+        mt_objects_double_ext,
+        maxtree_double_ext
+    ],
+    cmdclass={'build_ext': CustomBuildExt},
+    # Include packages and modules
+    packages=['mtolib'],
+    py_modules=['mto'],
+    package_data={'mtolib': ['lib/*.so', 'src/*.c', 'src/*.h']},
+    include_package_data=True,
+    # Basic project info (can also be read from pyproject.toml)
     name='mtobjects',
     version='0.1.0',
     description='Max-tree based object detection and parameter extraction',
-    packages=find_packages(),
-    py_modules=['mto'],
-    cmdclass={
-        'build_py': BuildCLibraries,
-        'install': InstallWithCLibraries,
-    },
-    package_data={'mtolib': ['lib/*.so', 'src/*.c', 'src/*.h']},
-    include_package_data=True,
-    install_requires=[
-        'numpy',
-        'astropy', 
-        'Pillow',
-        'scikit-image',
-        'matplotlib',
-    ],
-    python_requires='>=3.8',
-    author='Caroline Haigh',
-    license='MIT',
-    classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-    ],
 )
