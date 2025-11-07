@@ -1,7 +1,5 @@
 """
-Custom build backend that ensures C extensions are always compiled.
-This wrapper around setuptools.build_meta ensures our C compilation
-happens even during isolated pip builds from Git.
+Custom build backend for mtobjects that compiles C extensions before using Poetry
 """
 import os
 import subprocess
@@ -9,7 +7,14 @@ import sys
 from pathlib import Path
 
 # Import the standard setuptools backend
-from setuptools import build_meta as _orig_backend
+# Import Poetry backend instead of setuptools
+try:
+    import poetry.core.masonry.api as _orig_backend
+    print("Using Poetry backend for build")
+except ImportError:
+    # Fallback to setuptools if Poetry not available
+    from setuptools import build_meta as _orig_backend  
+    print("Poetry not available, falling back to setuptools backend")
 
 def _compile_c_extensions():
     """Compile C extensions - this will be called by our build backend"""

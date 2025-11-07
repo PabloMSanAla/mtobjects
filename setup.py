@@ -156,6 +156,8 @@ except Exception as e:
 
 # Simple setup call - configuration is in pyproject.toml
 setup(
+    
+
     cmdclass={
         'build': CustomBuild,
         'build_ext': CustomBuildExt,
