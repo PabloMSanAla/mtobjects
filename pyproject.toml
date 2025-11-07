@@ -31,7 +31,10 @@ py-modules = ["mto"]
 include-package-data = true
 
 [tool.setuptools.packages.find]
+# Include mtolib package
+include = ["mtolib*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]
-mtolib = ["lib/*.so", "src/*.c", "src/*.h"]
+# Include C source files for compilation during installation
+mtolib = ["src/*.c", "src/*.h"]

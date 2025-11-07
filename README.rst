@@ -34,6 +34,9 @@ With this new fork, you can install the package via pip:
 	
 	pip install -e .
 
+or directly from GitHub:
+::
+	pip install mtobjects@git+https://github.com/PabloMSanAla/mtobjects.git
 
 --------------------------
 
