@@ -2,10 +2,6 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.build-meta]
-# Ensure build_ext is run during the build process
-build-dir = "build"
-
 [project]
 name = "mtobjects"
 version = "0.1.0"
@@ -33,12 +29,8 @@ Repository = "https://github.com/PabloMSanAla/mtobjects"
 [tool.setuptools.packages.find]
 include = ["mtolib*"]
 
-[tool.setuptools.py-modules]
-mto = "mto"
+[tool.setuptools]
+py-modules = ["mto"]
 
 [tool.setuptools.package-data]
 mtolib = ["lib/*.so", "src/*.c", "src/*.h"]
-
-[tool.setuptools.ext-modules]
-# This section ensures C extensions are built
-# The actual extension definitions are in setup.py
