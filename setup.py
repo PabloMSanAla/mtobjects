@@ -1,22 +1,39 @@
 #!/usr/bin/env python
 import os
 import subprocess
+import sys
 from pathlib import Path
 from setuptools import setup
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 from setuptools.command.build import build
+from setuptools.command.develop import develop
+from setuptools.command.egg_info import egg_info
 
 
-class CustomBuildExt(build_ext):
-    """Custom build_ext command to compile C extensions (pure-Python implementation of recompile.sh)."""
-
-    def run(self):
-        print("Building C extensions...")
+def compile_c_extensions():
+    """Compile C extensions - can be called from multiple places"""
+    try:
         project_dir = Path(__file__).parent
         mtolib_dir = project_dir / "mtolib"
         lib_dir = mtolib_dir / "lib"
         src_dir = mtolib_dir / "src"
+
+        # Check if all libraries already exist and are newer than source files
+        required_libs = ["mt_objects.so", "maxtree.so", "mt_objects_double.so", "maxtree_double.so"]
+        all_libs_exist = all((lib_dir / lib).exists() for lib in required_libs)
+        
+        if all_libs_exist and src_dir.exists():
+            # Check if any source file is newer than the oldest library
+            src_files = list(src_dir.glob("*.c")) + list(src_dir.glob("*.h"))
+            if src_files:
+                newest_src = max(f.stat().st_mtime for f in src_files)
+                oldest_lib = min((lib_dir / lib).stat().st_mtime for lib in required_libs)
+                if newest_src <= oldest_lib:
+                    # Libraries are up to date
+                    return True
+
+        print("Building C extensions...")
 
         # Ensure lib directory exists
         lib_dir.mkdir(parents=True, exist_ok=True)
@@ -32,6 +49,7 @@ class CustomBuildExt(build_ext):
         # If sources aren't present, skip compilation with a warning
         if not src_dir.exists():
             print(f"Warning: source directory not found at {src_dir}, skipping C compilation")
+            return False
         else:
             print(f"Compiling C sources from {src_dir}")
             
@@ -58,7 +76,17 @@ class CustomBuildExt(build_ext):
                     print("On Ubuntu/Debian: sudo apt-get install build-essential")
                     print("On CentOS/RHEL: sudo yum groupinstall 'Development Tools'")
                     raise
+            return True
+    except Exception as e:
+        print(f"Failed to compile C extensions: {e}")
+        return False
 
+
+class CustomBuildExt(build_ext):
+    """Custom build_ext command to compile C extensions (pure-Python implementation of recompile.sh)."""
+
+    def run(self):
+        compile_c_extensions()
         # Call parent implementation
         super().run()
 
@@ -68,7 +96,24 @@ class CustomBuild(build):
     
     def run(self):
         # Run build_ext before other build steps
-        self.run_command('build_ext')
+        compile_c_extensions()
+        super().run()
+
+
+class CustomDevelop(develop):
+    """Custom develop command to ensure C extensions are built in development mode"""
+    
+    def run(self):
+        compile_c_extensions()
+        super().run()
+
+
+class CustomEggInfo(egg_info):
+    """Custom egg_info command to ensure C extensions are built during metadata generation"""
+    
+    def run(self):
+        # Compile extensions when generating egg info (happens during Git installs)
+        compile_c_extensions()
         super().run()
 
 
@@ -77,16 +122,25 @@ class CustomInstall(install):
     
     def run(self):
         print("Installing mtobjects with C extension compilation...")
-        # Run build_ext before install to ensure compiled libraries are available
-        self.run_command('build_ext')
+        # Run compilation before install to ensure compiled libraries are available
+        compile_c_extensions()
         super().run()
 
+
+# Compile extensions immediately when setup.py is imported/executed
+# This catches cases where pip might bypass our custom commands
+try:
+    compile_c_extensions()
+except Exception as e:
+    print(f"Note: Could not pre-compile C extensions: {e}")
 
 # Simple setup call - configuration is in pyproject.toml
 setup(
     cmdclass={
         'build': CustomBuild,
         'build_ext': CustomBuildExt,
+        'develop': CustomDevelop,
+        'egg_info': CustomEggInfo,
         'install': CustomInstall,
     },
 )
