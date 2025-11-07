@@ -1,0 +1,7 @@
+include *.py
+include *.rst
+include Makefile
+include pyproject.toml
+recursive-include mtolib/src *.c *.h
+recursive-exclude mtolib/lib *.so
+prune mtolib/__pycache__
