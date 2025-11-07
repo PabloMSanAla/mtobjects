@@ -12,34 +12,19 @@ from setuptools.command.egg_info import egg_info
 
 
 def compile_c_extensions():
-    """Compile C extensions using Makefile - more reliable across platforms"""
+    """Compile C extensions - tries multiple methods for maximum reliability"""
     try:
         project_dir = Path(__file__).parent
-        makefile_path = project_dir / "Makefile"
+        mtolib_dir = project_dir / "mtolib"
+        lib_dir = mtolib_dir / "lib"
+        src_dir = mtolib_dir / "src"
         
-        # Check if Makefile exists
-        if not makefile_path.exists():
-            print("Warning: Makefile not found, skipping C compilation")
-            return False
-            
-        print("Building C extensions using Makefile...")
-        
-        # Use make to compile the C extensions
-        try:
-            # Try to use make to compile
-            subprocess.check_call(["make", "compile"], cwd=str(project_dir))
-            print("Successfully compiled C extensions using Makefile")
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("Make command failed or not found, trying fallback compilation...")
-            
-            # Fallback to direct gcc commands if make fails
-            mtolib_dir = project_dir / "mtolib"
-            lib_dir = mtolib_dir / "lib"
-            src_dir = mtolib_dir / "src"
+        print("Building C extensions...")
 
-            # Check if all libraries already exist and are newer than source files
-            required_libs = ["mt_objects.so", "maxtree.so", "mt_objects_double.so", "maxtree_double.so"]
+        # Check if all libraries already exist and are newer than source files
+        required_libs = ["mt_objects.so", "maxtree.so", "mt_objects_double.so", "maxtree_double.so"]
+        
+        if lib_dir.exists():
             all_libs_exist = all((lib_dir / lib).exists() for lib in required_libs)
             
             if all_libs_exist and src_dir.exists():
@@ -49,53 +34,71 @@ def compile_c_extensions():
                     newest_src = max(f.stat().st_mtime for f in src_files)
                     oldest_lib = min((lib_dir / lib).stat().st_mtime for lib in required_libs)
                     if newest_src <= oldest_lib:
-                        # Libraries are up to date
+                        print("C extensions are up to date")
                         return True
 
-            # Ensure lib directory exists
-            lib_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure lib directory exists
+        lib_dir.mkdir(parents=True, exist_ok=True)
 
-            # Remove existing shared objects to force recompilation
-            for so in lib_dir.glob("*.so"):
-                try:
-                    so.unlink()
-                    print(f"Removed existing {so.name}")
-                except Exception as e:
-                    print(f"Warning: Could not remove {so.name}: {e}")
+        # Remove existing shared objects to force recompilation
+        for so in lib_dir.glob("*.so"):
+            try:
+                so.unlink()
+                print(f"Removed existing {so.name}")
+            except Exception as e:
+                print(f"Warning: Could not remove {so.name}: {e}")
 
-            # If sources aren't present, skip compilation with a warning
-            if not src_dir.exists():
-                print(f"Warning: source directory not found at {src_dir}, skipping C compilation")
-                return False
-            else:
-                print(f"Compiling C sources from {src_dir} (fallback method)")
-                
-                # Compilation commands (run in src_dir) - using relative paths like the original recompile.sh
-                cmds = [
-                    ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/mt_objects.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
-                    ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/maxtree.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
-                    ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/mt_objects_double.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
-                    ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/maxtree_double.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
-                ]
+        # If sources aren't present, skip compilation with a warning
+        if not src_dir.exists():
+            print(f"Warning: source directory not found at {src_dir}, skipping C compilation")
+            return False
+            
+        print(f"Compiling C sources from {src_dir}")
 
-                for cmd in cmds:
-                    try:
-                        print(f"Running: {' '.join(cmd)}")
-                        subprocess.check_call(cmd, cwd=str(src_dir))
-                        print(f"Successfully compiled {cmd[-1].split('/')[-1]}")
-                    except subprocess.CalledProcessError as e:
-                        print(f"Compilation failed: {' '.join(cmd)}")
-                        print(f"Error: {e}")
-                        raise
-                    except FileNotFoundError:
-                        print("Error: gcc not found. Please install GCC compiler.")
-                        print("On macOS: xcode-select --install")
-                        print("On Ubuntu/Debian: sudo apt-get install build-essential")
-                        print("On CentOS/RHEL: sudo yum groupinstall 'Development Tools'")
-                        raise
+        # Method 1: Try direct gcc compilation first (most reliable)
+        try:
+            # Compilation commands (run in src_dir) - using relative paths like the original recompile.sh
+            cmds = [
+                ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/mt_objects.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
+                ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/maxtree.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
+                ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/mt_objects_double.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
+                ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/maxtree_double.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
+            ]
+
+            for cmd in cmds:
+                print(f"Running: {' '.join(cmd)}")
+                subprocess.check_call(cmd, cwd=str(src_dir))
+                print(f"Successfully compiled {cmd[-1].split('/')[-1]}")
+            
+            print("Successfully compiled C extensions using direct gcc")
+            return True
+            
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Direct gcc compilation failed: {e}")
+            
+        # Method 2: Try Makefile as backup
+        makefile_path = project_dir / "Makefile"
+        if makefile_path.exists():
+            try:
+                print("Trying Makefile compilation as backup...")
+                subprocess.check_call(["make", "compile"], cwd=str(project_dir))
+                print("Successfully compiled C extensions using Makefile")
                 return True
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print(f"Makefile compilation also failed: {e}")
+        
+        # If we get here, both methods failed
+        print("Error: Both direct gcc and Makefile compilation failed.")
+        print("Please ensure you have a C compiler installed:")
+        print("  On macOS: xcode-select --install")
+        print("  On Ubuntu/Debian: sudo apt-get install build-essential")
+        print("  On CentOS/RHEL: sudo yum groupinstall 'Development Tools'")
+        return False
+        
     except Exception as e:
         print(f"Failed to compile C extensions: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
