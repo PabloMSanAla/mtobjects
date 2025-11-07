@@ -1,41 +1,35 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry]
+[project]
 name = "mtobjects"
 version = "0.1.0"
 description = "Max-tree based object detection and parameter extraction"
-authors = ["Caroline Haigh <caroline@example.com>"]
-license = "MIT"
+authors = [{name = "Caroline Haigh", email = "caroline@example.com"}]
+license = {text = "MIT"}
 readme = "README.rst"
-homepage = "https://github.com/PabloMSanAla/mtobjects"
-repository = "https://github.com/PabloMSanAla/mtobjects"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "astropy",
+    "Pillow",
+    "scikit-image",
+    "matplotlib",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-packages = [{include = "mtolib"}]
-include = [
-    "mto.py",
-    "mtolib/src/*.c",
-    "mtolib/src/*.h",
-    "mtolib/lib/*.so",
-    "Makefile"
-]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-numpy = "*"
-astropy = "*"
-Pillow = "*"
-scikit-image = "*"
-matplotlib = "*"
+[project.urls]
+Homepage = "https://github.com/PabloMSanAla/mtobjects"
+Repository = "https://github.com/PabloMSanAla/mtobjects"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.0.0"
+[tool.setuptools.packages.find]
+include = ["mtolib*", "mto*"]
 
-# Custom scripts that run before/after build
-[tool.poetry.scripts]
-# We can add compilation scripts here if needed
+[tool.setuptools.package-data]
+mtolib = ["lib/*.so", "src/*.c", "src/*.h"]
+"*" = ["Makefile"]

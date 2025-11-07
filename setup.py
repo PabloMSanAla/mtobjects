@@ -1,168 +1,91 @@
-#!/usr/bin/env python
-import os
-import subprocess
-import sys
-from pathlib import Path
-from setuptools import setup
-from setuptools.command.build_ext import build_ext
+from setuptools import setup, find_packages
+from setuptools.command.build_py import build_py
 from setuptools.command.install import install
-from setuptools.command.build import build
-from setuptools.command.develop import develop
-from setuptools.command.egg_info import egg_info
+import subprocess
+import os
+import sys
 
 
-def compile_c_extensions():
-    """Compile C extensions - tries multiple methods for maximum reliability"""
-    try:
-        project_dir = Path(__file__).parent
-        mtolib_dir = project_dir / "mtolib"
-        lib_dir = mtolib_dir / "lib"
-        src_dir = mtolib_dir / "src"
+class BuildCLibraries(build_py):
+    """Custom build command to compile C libraries using gcc."""
+    
+    def run(self):
+        # Run the parent build_py first
+        super().run()
         
-        print("Building C extensions...")
-
-        # Check if all libraries already exist and are newer than source files
-        required_libs = ["mt_objects.so", "maxtree.so", "mt_objects_double.so", "maxtree_double.so"]
+        # Change to the project directory
+        original_dir = os.getcwd()
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(project_dir)
         
-        if lib_dir.exists():
-            all_libs_exist = all((lib_dir / lib).exists() for lib in required_libs)
-            
-            if all_libs_exist and src_dir.exists():
-                # Check if any source file is newer than the oldest library
-                src_files = list(src_dir.glob("*.c")) + list(src_dir.glob("*.h"))
-                if src_files:
-                    newest_src = max(f.stat().st_mtime for f in src_files)
-                    oldest_lib = min((lib_dir / lib).stat().st_mtime for lib in required_libs)
-                    if newest_src <= oldest_lib:
-                        print("C extensions are up to date")
-                        return True
-
-        # Ensure lib directory exists
-        lib_dir.mkdir(parents=True, exist_ok=True)
-
-        # Remove existing shared objects to force recompilation
-        for so in lib_dir.glob("*.so"):
-            try:
-                so.unlink()
-                print(f"Removed existing {so.name}")
-            except Exception as e:
-                print(f"Warning: Could not remove {so.name}: {e}")
-
-        # If sources aren't present, skip compilation with a warning
-        if not src_dir.exists():
-            print(f"Warning: source directory not found at {src_dir}, skipping C compilation")
-            return False
-            
-        print(f"Compiling C sources from {src_dir}")
-
-        # Method 1: Try direct gcc compilation first (most reliable)
         try:
-            # Compilation commands (run in src_dir) - using relative paths like the original recompile.sh
-            cmds = [
-                ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/mt_objects.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
-                ["gcc", "-shared", "-fPIC", "-include", "main.h", "-o", "../lib/maxtree.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
-                ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/mt_objects_double.so", "mt_objects.c", "mt_heap.c", "mt_node_test_4.c"],
-                ["gcc", "-shared", "-fPIC", "-include", "main_double.h", "-o", "../lib/maxtree_double.so", "maxtree.c", "mt_stack.c", "mt_heap.c"],
+            # Create lib directory if it doesn't exist
+            lib_dir = 'mtolib/lib'
+            os.makedirs(lib_dir, exist_ok=True)
+            
+            # Define the compilation commands (equivalent to the Makefile)
+            commands = [
+                # mt_objects.so
+                'gcc -shared -fPIC -include mtolib/src/main.h -o mtolib/lib/mt_objects.so mtolib/src/mt_objects.c mtolib/src/mt_heap.c mtolib/src/mt_node_test_4.c',
+                # maxtree.so  
+                'gcc -shared -fPIC -include mtolib/src/main.h -o mtolib/lib/maxtree.so mtolib/src/maxtree.c mtolib/src/mt_stack.c mtolib/src/mt_heap.c',
+                # mt_objects_double.so
+                'gcc -shared -fPIC -include mtolib/src/main_double.h -o mtolib/lib/mt_objects_double.so mtolib/src/mt_objects.c mtolib/src/mt_heap.c mtolib/src/mt_node_test_4.c',
+                # maxtree_double.so
+                'gcc -shared -fPIC -include mtolib/src/main_double.h -o mtolib/lib/maxtree_double.so mtolib/src/maxtree.c mtolib/src/mt_stack.c mtolib/src/mt_heap.c'
             ]
-
-            for cmd in cmds:
-                print(f"Running: {' '.join(cmd)}")
-                subprocess.check_call(cmd, cwd=str(src_dir))
-                print(f"Successfully compiled {cmd[-1].split('/')[-1]}")
             
-            print("Successfully compiled C extensions using direct gcc")
-            return True
-            
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            print(f"Direct gcc compilation failed: {e}")
-            
-        # Method 2: Try Makefile as backup
-        makefile_path = project_dir / "Makefile"
-        if makefile_path.exists():
-            try:
-                print("Trying Makefile compilation as backup...")
-                subprocess.check_call(["make", "compile"], cwd=str(project_dir))
-                print("Successfully compiled C extensions using Makefile")
-                return True
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                print(f"Makefile compilation also failed: {e}")
-        
-        # If we get here, both methods failed
-        print("Error: Both direct gcc and Makefile compilation failed.")
-        print("Please ensure you have a C compiler installed:")
-        print("  On macOS: xcode-select --install")
-        print("  On Ubuntu/Debian: sudo apt-get install build-essential")
-        print("  On CentOS/RHEL: sudo yum groupinstall 'Development Tools'")
-        return False
-        
-    except Exception as e:
-        print(f"Failed to compile C extensions: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+            # Execute each compilation command
+            for cmd in commands:
+                print(f"Running: {cmd}")
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"Error compiling: {cmd}")
+                    print(f"stdout: {result.stdout}")
+                    print(f"stderr: {result.stderr}")
+                    sys.exit(1)
+                else:
+                    print(f"Successfully compiled: {cmd.split()[-1]}")
+                    
+        finally:
+            os.chdir(original_dir)
 
 
-class CustomBuildExt(build_ext):
-    """Custom build_ext command to compile C extensions (pure-Python implementation of recompile.sh)."""
-
-    def run(self):
-        compile_c_extensions()
-        # Call parent implementation
-        super().run()
-
-
-class CustomBuild(build):
-    """Custom build command to ensure C extensions are built"""
+class InstallWithCLibraries(install):
+    """Custom install command that ensures C libraries are built."""
     
     def run(self):
-        # Run build_ext before other build steps
-        compile_c_extensions()
+        # Run the build command first
+        self.run_command('build_py')
+        # Then run the normal install
         super().run()
 
 
-class CustomDevelop(develop):
-    """Custom develop command to ensure C extensions are built in development mode"""
-    
-    def run(self):
-        compile_c_extensions()
-        super().run()
-
-
-class CustomEggInfo(egg_info):
-    """Custom egg_info command to ensure C extensions are built during metadata generation"""
-    
-    def run(self):
-        # Compile extensions when generating egg info (happens during Git installs)
-        compile_c_extensions()
-        super().run()
-
-
-class CustomInstall(install):
-    """Custom install command to ensure C extensions are built"""
-    
-    def run(self):
-        print("Installing mtobjects with C extension compilation...")
-        # Run compilation before install to ensure compiled libraries are available
-        compile_c_extensions()
-        super().run()
-
-
-# Compile extensions immediately when setup.py is imported/executed
-# This catches cases where pip might bypass our custom commands
-try:
-    compile_c_extensions()
-except Exception as e:
-    print(f"Note: Could not pre-compile C extensions: {e}")
-
-# Simple setup call - configuration is in pyproject.toml
 setup(
-    
-
+    name='mtobjects',
+    version='0.1.0',
+    description='Max-tree based object detection and parameter extraction',
+    packages=find_packages(),
+    py_modules=['mto'],
     cmdclass={
-        'build': CustomBuild,
-        'build_ext': CustomBuildExt,
-        'develop': CustomDevelop,
-        'egg_info': CustomEggInfo,
-        'install': CustomInstall,
+        'build_py': BuildCLibraries,
+        'install': InstallWithCLibraries,
     },
+    package_data={'mtolib': ['lib/*.so', 'src/*.c', 'src/*.h']},
+    include_package_data=True,
+    install_requires=[
+        'numpy',
+        'astropy', 
+        'Pillow',
+        'scikit-image',
+        'matplotlib',
+    ],
+    python_requires='>=3.8',
+    author='Caroline Haigh',
+    license='MIT',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+    ],
 )
