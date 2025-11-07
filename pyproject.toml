@@ -40,4 +40,4 @@ exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 # Include C source files for compilation during installation
-mtolib = ["src/*.c", "src/*.h"]
+mtolib = ["src/*.c", "src/*.h", "lib/*"]
