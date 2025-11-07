@@ -3,7 +3,8 @@ requires = [
     "setuptools>=61.0", 
     "wheel"
 ]
-build-backend = "setuptools.build_meta:__legacy__"
+build-backend = "_build_backend"
+backend-path = ["."]
 
 [project]
 name = "mtobjects"
@@ -32,8 +33,6 @@ Repository = "https://github.com/PabloMSanAla/mtobjects"
 [tool.setuptools]
 py-modules = ["mto"]
 include-package-data = true
-# Force setup.py to be used for all build operations
-script-files = ["setup.py"]
 
 [tool.setuptools.packages.find]
 # Include mtolib package
