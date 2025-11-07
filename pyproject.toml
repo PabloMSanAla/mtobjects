@@ -43,12 +43,3 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 # Include C source files for compilation during installation
 mtolib = ["src/*.c", "src/*.h"]
-
-# Ensure build commands are always executed
-[tool.setuptools.cmdclass]
-# These will be overridden by setup.py, but this ensures they're considered
-build_ext = "setup:CustomBuildExt"
-build = "setup:CustomBuild"
-install = "setup:CustomInstall"
-develop = "setup:CustomDevelop"
-egg_info = "setup:CustomEggInfo"
