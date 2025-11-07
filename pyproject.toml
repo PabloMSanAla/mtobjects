@@ -33,6 +33,7 @@ Repository = "https://github.com/PabloMSanAla/mtobjects"
 [tool.setuptools]
 py-modules = ["mto"]
 include-package-data = true
+script-files = ["recompile.sh"]
 
 [tool.setuptools.packages.find]
 # Include mtolib package
